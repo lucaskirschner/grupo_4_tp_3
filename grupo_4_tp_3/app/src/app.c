@@ -52,14 +52,13 @@
 
 /********************** macros and definitions *******************************/
 
-
 /********************** internal data declaration ****************************/
 
 /********************** internal functions declaration ***********************/
 
 /********************** internal data definition *****************************/
 
-/********************** external data declaration *****************************/
+/********************** external data declaration ****************************/
 
 /********************** external functions definition ************************/
 void app_init(void)
