@@ -18,6 +18,7 @@
 #include "dwt.h"
 
 #include "ao_led.h"
+#include "priority_queue.h"
 
 /********************** macros and definitions *******************************/
 
