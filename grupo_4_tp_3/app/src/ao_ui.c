@@ -22,6 +22,7 @@
 
 /********************** macros and definitions *******************************/
 #define UI_IDLE_TIMEOUT_MS_		 (10000)
+#define ON_TIME_MS_		 		 (5000)
 
 #define QUEUE_LENGTH_            (10)
 #define QUEUE_ITEM_SIZE_         (sizeof(ao_ui_message_t*))
@@ -55,21 +56,40 @@ void task_ui(void* argument)
 		ao_ui_message_t *pmsg;
 		if (pdPASS == xQueueReceive(hao_ui.hqueue, &pmsg, pdMS_TO_TICKS(UI_IDLE_TIMEOUT_MS_)))
 		{
-			switch(pmsg->action)
+			ao_led_message_t *pmsg_led = (ao_led_message_t*)pvPortMalloc(sizeof(ao_led_message_t));
+			if(NULL != pmsg_led)
 			{
-			case MSG_EVENT_BUTTON_NONE:
-				break;
-			case MSG_EVENT_BUTTON_PULSE:
-				/* Función que encola evento de Prioridad Alta */
-				break;
-			case MSG_EVENT_BUTTON_SHORT:
-				/* Función que encola evento de Prioridad Media */
-				break;
-			case MSG_EVENT_BUTTON_LONG:
-				/* Función que encola evento de Prioridad Baja */
-				break;
-			default:
-				break;
+				pmsg_led->action   = AO_LED_MESSAGE_ON;
+				pmsg_led->on_time  = pdMS_TO_TICKS(ON_TIME_MS_);
+				pmsg_led->callback = callback_task_ui;
+
+				switch(pmsg->action)
+				{
+				case MSG_EVENT_BUTTON_NONE:
+					break;
+				case MSG_EVENT_BUTTON_PULSE:
+					/* Función que encola evento de Prioridad Alta */
+					pmsg_led->prio  = PQ_PRIO_HIGH;
+					pmsg_led->color = AO_LED_COLOR_RED;
+					break;
+				case MSG_EVENT_BUTTON_SHORT:
+					/* Función que encola evento de Prioridad Media */
+					pmsg_led->prio  = PQ_PRIO_MED;
+					pmsg_led->color = AO_LED_COLOR_GREEN;
+					break;
+				case MSG_EVENT_BUTTON_LONG:
+					/* Función que encola evento de Prioridad Baja */
+					pmsg_led->prio  = PQ_PRIO_LOW;
+					pmsg_led->color = AO_LED_COLOR_BLUE;
+					break;
+				default:
+					break;
+				}
+
+				if(!ao_led_send_event(pmsg_led, 0))
+				{
+					vPortFree(pmsg_led);
+				}
 			}
 
 			if(pmsg->callback)

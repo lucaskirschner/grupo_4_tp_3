@@ -22,6 +22,8 @@ extern "C" {
 #include "main.h"
 #include "cmsis_os.h"
 
+#include "priority_queue.h"
+
 /********************** macros ***********************************************/
 
 /********************** typedef **********************************************/
@@ -46,14 +48,12 @@ typedef void (*ao_led_cb_t)(void*);
 
 typedef struct
 {
-    ao_led_cb_t callback;
+	pq_prio_t prio;
     ao_led_action_t action;
+    ao_led_color color;
+    TickType_t	on_time;
+    ao_led_cb_t callback;
 } ao_led_message_t;
-
-typedef struct {
-  ao_led_color color;
-  QueueHandle_t hqueue;
-} ao_led_handle_t;
 
 /********************** external data declaration ****************************/
 
