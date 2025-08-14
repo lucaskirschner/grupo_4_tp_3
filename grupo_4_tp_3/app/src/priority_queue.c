@@ -9,6 +9,14 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
+/********************** external data definition ****************************/
+const char* const priority_name[] = {
+		"AO_LED_MESSAGE_HIGH_PRIORITY",
+		"AO_LED_MESSAGE_MEDIA_PRIORITY",
+		"AO_LED_MESSAGE_LOW_PRIORITY",
+		"AO_LED_MESSAGE_N",
+};
+
 // Nodo interno
 typedef struct pq_node {
     pq_item_t        item;
@@ -24,7 +32,7 @@ typedef struct {
 
 // Estructura principal de la cola de prioridad
 struct prio_queue_t {
-    pq_fifo_t        fifos[PQ_PRIO__N];
+    pq_fifo_t        fifos[AO_LED_MESSAGE_N];
     size_t           size;       	// elementos totales
     size_t           capacity;  	 // límite global
     uint32_t         seq_counter;	// Contador para asignar "antigüedad"
@@ -73,7 +81,7 @@ static inline pq_node_t* fifo_peek(pq_fifo_t *f){ return f->head; }
 bool pq_init(prio_queue_t *q, size_t capacity){
     if(!q || capacity == 0) return false;
     // Inicializar todas las FIFOs
-    for(int i=0;i<PQ_PRIO__N;i++){ q->fifos[i].head=q->fifos[i].tail=NULL; q->fifos[i].size=0; }
+    for(int i=0;i<AO_LED_MESSAGE_N;i++){ q->fifos[i].head=q->fifos[i].tail=NULL; q->fifos[i].size=0; }
     q->size = 0;
     q->capacity = capacity;
     q->seq_counter = 0;
@@ -95,12 +103,12 @@ static pq_node_t* alloc_node_copy(const pq_item_t *src){
 
 // Descarta el nodo más antiguo de la cola, sin considerar las prioridades
 static void discard_oldest_locked(prio_queue_t *q){
-    pq_node_t *cand[PQ_PRIO__N] = { fifo_peek(&q->fifos[PQ_PRIO_HIGH]),
-                                    fifo_peek(&q->fifos[PQ_PRIO_MED ]),
-                                    fifo_peek(&q->fifos[PQ_PRIO_LOW ]) };
+    pq_node_t *cand[AO_LED_MESSAGE_N] = { fifo_peek(&q->fifos[AO_LED_MESSAGE_HIGH_PRIORITY]),
+                                    fifo_peek(&q->fifos[AO_LED_MESSAGE_MEDIA_PRIORITY ]),
+                                    fifo_peek(&q->fifos[AO_LED_MESSAGE_LOW_PRIORITY ]) };
     int idx = -1;
     uint32_t minseq = 0;
-    for(int i=0;i<PQ_PRIO__N;i++){
+    for(int i=0;i<AO_LED_MESSAGE_N;i++){
         if(cand[i]){
             if(idx < 0 || cand[i]->item.seq < minseq){ idx = i; minseq = cand[i]->item.seq; }
         }
@@ -154,9 +162,9 @@ bool pq_pop(prio_queue_t *q, pq_item_t *out_item, TickType_t timeout){
     pq_node_t *n = NULL;
 
     // prioridad: HIGH > MED > LOW
-    if(!n) n = fifo_pop(&q->fifos[PQ_PRIO_HIGH]);
-    if(!n) n = fifo_pop(&q->fifos[PQ_PRIO_MED ]);
-    if(!n) n = fifo_pop(&q->fifos[PQ_PRIO_LOW ]);
+    if(!n) n = fifo_pop(&q->fifos[AO_LED_MESSAGE_HIGH_PRIORITY]);
+    if(!n) n = fifo_pop(&q->fifos[AO_LED_MESSAGE_MEDIA_PRIORITY ]);
+    if(!n) n = fifo_pop(&q->fifos[AO_LED_MESSAGE_LOW_PRIORITY ]);
     if(n){ q->size--; *out_item = n->item; vPortFree(n); }
     xSemaphoreGive(q->mutex);
     return (n != NULL);
@@ -166,7 +174,7 @@ bool pq_pop(prio_queue_t *q, pq_item_t *out_item, TickType_t timeout){
 void pq_destroy(prio_queue_t *q){
     if(!q) return;
     xSemaphoreTake(q->mutex, portMAX_DELAY);
-    for(int i=0;i<PQ_PRIO__N;i++){
+    for(int i=0;i<AO_LED_MESSAGE_N;i++){
         pq_node_t *n;
         while((n = fifo_pop(&q->fifos[i])) != NULL){
             if(n->item.free_cb && n->item.payload){ n->item.free_cb(n->item.payload); }
@@ -189,7 +197,7 @@ PriorityQueueHandle_t xPriorityQueueCreateEx(size_t capacity, size_t item_size, 
 {
 	// Validaciones iniciales
     if (item_size != sizeof(void*)) return NULL;
-    if (num_priorities != (uint8_t)PQ_PRIO__N) return NULL; // hoy soportamos 3 prioridades
+    if (num_priorities != (uint8_t)AO_LED_MESSAGE_N) return NULL; // hoy soportamos 3 prioridades
 
     // Reservar memoria para la estructura de la cola
     struct PriorityQueueOpaque *h = pvPortMalloc(sizeof(*h));

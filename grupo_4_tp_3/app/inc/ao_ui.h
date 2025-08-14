@@ -43,6 +43,7 @@ typedef struct
 } ao_ui_message_t;
 
 /********************** external data declaration ****************************/
+extern const char * const button_action_name[];
 
 /********************** external functions declaration ***********************/
 

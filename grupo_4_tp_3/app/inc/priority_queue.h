@@ -13,11 +13,14 @@
 #include <stddef.h>
 #include "cmsis_os.h"
 
+/********************** external data definition ****************************/
+extern const char * const priority_name[];
+
 typedef enum {
-    PQ_PRIO_HIGH = 0,   // Pulso
-    PQ_PRIO_MED  = 1,   // Corto
-    PQ_PRIO_LOW  = 2,   // Largo
-    PQ_PRIO__N
+	AO_LED_MESSAGE_HIGH_PRIORITY,		// Pulso
+	AO_LED_MESSAGE_MEDIA_PRIORITY,		// Corto
+	AO_LED_MESSAGE_LOW_PRIORITY,   		// Largo
+	AO_LED_MESSAGE_N,
 } pq_prio_t;
 
 typedef struct {
@@ -38,7 +41,7 @@ PriorityQueueHandle_t xPriorityQueueCreateEx(size_t capacity, size_t item_size, 
 
 
 static inline PriorityQueueHandle_t xPriorityQueueCreate(size_t capacity, size_t item_size) {
-    return xPriorityQueueCreateEx(capacity, item_size, (uint8_t)PQ_PRIO__N);
+    return xPriorityQueueCreateEx(capacity, item_size, (uint8_t)AO_LED_MESSAGE_N);
 }
 
 // Elimina la cola de prioridad y libera todos los recursos

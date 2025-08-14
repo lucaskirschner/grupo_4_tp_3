@@ -70,14 +70,17 @@ static button_type_t button_process_state_(bool value)
 	{
 		if(BUTTON_LONG_TIMEOUT_ <= button.counter)
 		{
+			LOGGER_INFO("Se detecto BUTTON_TYPE_LONG");
 			ret = BUTTON_TYPE_LONG;
 		}
 		else if(BUTTON_SHORT_TIMEOUT_ <= button.counter)
 		{
+			LOGGER_INFO("Se detecto BUTTON_TYPE_SHORT");
 			ret = BUTTON_TYPE_SHORT;
 		}
 		else if(BUTTON_PULSE_TIMEOUT_ <= button.counter)
 		{
+			LOGGER_INFO("Se detecto BUTTON_TYPE_PULSE");
 			ret = BUTTON_TYPE_PULSE;
 		}
 		button.counter = 0;
@@ -87,6 +90,8 @@ static button_type_t button_process_state_(bool value)
 
 static void callback_task_button(void *pmsg)
 {
+	ao_ui_message_t *msg = (ao_ui_message_t *)pmsg;
+	LOGGER_INFO("Liberando memoria de %s", button_action_name[msg->action]);
 	vPortFree(pmsg);
 }
 
@@ -109,6 +114,7 @@ void task_button(void* argument)
 			case BUTTON_TYPE_PULSE:
 			case BUTTON_TYPE_SHORT:
 			case BUTTON_TYPE_LONG:
+				LOGGER_INFO("Creando %s", button_action_name[(ao_ui_action_t)button_type]);
 				ao_ui_message_t* pmsg = (ao_ui_message_t*)pvPortMalloc(sizeof(ao_ui_message_t));
 				if (NULL != pmsg)
 				{
@@ -117,11 +123,13 @@ void task_button(void* argument)
 
 					if (!ao_ui_send_event(pmsg, portMAX_DELAY))
 					{
+						LOGGER_INFO("No se pudo enviar %s", button_action_name[pmsg->action]);
 						vPortFree(pmsg);
 					}
 				}
 				break;
 			default:
+				LOGGER_INFO("button error");
 				break;
 		}
 

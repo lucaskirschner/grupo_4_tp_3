@@ -41,11 +41,19 @@ static void queue_ui_delete(void);
 static ao_ui_handle_t hao_ui = {.hqueue = NULL};
 
 /********************** external data definition *****************************/
+const char* const button_action_name[] = {
+		"MESSAGE_BUTTON_NONE",
+		"MESSAGE_BUTTON_PULSE",
+		"MESSAGE_BUTTON_SHORT",
+		"MESSAGE_BUTTON_LONG",
+};
 
 /********************** internal functions definition ************************/
 
 static void callback_task_ui(void *pmsg)
 {
+	ao_led_message_t *msg = (ao_led_message_t *)pmsg;
+	LOGGER_INFO("Liberando memoria de %s", priority_name[msg->prio]);
 	vPortFree(pmsg);
 }
 
@@ -69,18 +77,21 @@ void task_ui(void* argument)
 					break;
 				case MSG_EVENT_BUTTON_PULSE:
 					/* Función que encola evento de Prioridad Alta */
-					pmsg_led->prio  = PQ_PRIO_HIGH;
+					pmsg_led->prio  = AO_LED_MESSAGE_HIGH_PRIORITY;
 					pmsg_led->color = AO_LED_COLOR_RED;
+					LOGGER_INFO("Creando %s", priority_name[pmsg_led->prio]);
 					break;
 				case MSG_EVENT_BUTTON_SHORT:
 					/* Función que encola evento de Prioridad Media */
-					pmsg_led->prio  = PQ_PRIO_MED;
+					pmsg_led->prio  = AO_LED_MESSAGE_MEDIA_PRIORITY;
 					pmsg_led->color = AO_LED_COLOR_GREEN;
+					LOGGER_INFO("Creando %s", priority_name[pmsg_led->prio]);
 					break;
 				case MSG_EVENT_BUTTON_LONG:
 					/* Función que encola evento de Prioridad Baja */
-					pmsg_led->prio  = PQ_PRIO_LOW;
+					pmsg_led->prio  = AO_LED_MESSAGE_LOW_PRIORITY;
 					pmsg_led->color = AO_LED_COLOR_BLUE;
+					LOGGER_INFO("Creando %s", priority_name[pmsg_led->prio]);
 					break;
 				default:
 					break;
@@ -88,6 +99,7 @@ void task_ui(void* argument)
 
 				if(!ao_led_send_event(pmsg_led, 0))
 				{
+					LOGGER_INFO("No se pudo enviar %s", priority_name[pmsg_led->prio]);
 					vPortFree(pmsg_led);
 				}
 			}
@@ -101,6 +113,7 @@ void task_ui(void* argument)
 		else
 		{
 			queue_ui_delete();
+			LOGGER_INFO("Tarea UI eliminada");
 			vTaskDelete(NULL);
 		}
 	}
@@ -112,19 +125,25 @@ bool ao_ui_send_event(ao_ui_message_t *pmsg, TickType_t ticksToWait)
 {
 	if(NULL == hao_ui.hqueue)
 	{
+		LOGGER_INFO("Creando cola de UI");
 		hao_ui.hqueue = xQueueCreate(QUEUE_LENGTH_, QUEUE_ITEM_SIZE_);
 		if (NULL == hao_ui.hqueue)
 		{
 			// error
+			LOGGER_INFO("Error creando cola de UI");
 			return false;
 		}
 
+		LOGGER_INFO("Creando tarea de UI");
 		BaseType_t status;
 		status = xTaskCreate(task_ui, "task_ui", 128, NULL, tskIDLE_PRIORITY, NULL);
 		if (pdPASS != status)
 		{
 			// error
+			LOGGER_INFO("Error creando tarea de UI");
+			LOGGER_INFO("Eliminando cola de UI");
 			vQueueDelete(hao_ui.hqueue);
+			LOGGER_INFO("Cola UI eliminada");
 			hao_ui.hqueue = NULL;
 			return false;
 		}
@@ -137,13 +156,16 @@ static void queue_ui_delete(void)
 {
 	if(NULL != hao_ui.hqueue)
 	{
+		LOGGER_INFO("Eliminando cola de UI");
 		ao_ui_message_t *pmsg;
 		taskENTER_CRITICAL();{
 			while(pdPASS == xQueueReceive(hao_ui.hqueue, (void*)&pmsg, 0))
 			{
+				LOGGER_INFO("Liberando memoria de %s de la cola UI", button_action_name[pmsg->action]);
 				vPortFree(pmsg);
 			}
 			vQueueDelete(hao_ui.hqueue);
+			LOGGER_INFO("Cola UI eliminada");
 			hao_ui.hqueue = NULL;
 		}taskEXIT_CRITICAL();
 	}

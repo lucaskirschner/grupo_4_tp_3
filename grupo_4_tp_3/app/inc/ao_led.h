@@ -56,6 +56,8 @@ typedef struct
 } ao_led_message_t;
 
 /********************** external data declaration ****************************/
+extern const char * const led_color_name[];
+extern const char * const led_action_name[];
 
 /********************** external functions declaration ***********************/
 bool ao_led_send_event(ao_led_message_t* pmsg, TickType_t ticksToWait);
