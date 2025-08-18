@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Juan Manuel Cruz <jcruz@fi.uba.ar>.
+ * Copyright (c) 2023 Sebastian Bedin <sebabedin@gmail.com>.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,28 +29,23 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- *
- * @file   : app.c
- * @date   : Set 26, 2023
- * @author : Juan Manuel Cruz <jcruz@fi.uba.ar> <jcruz@frba.utn.edu.ar>
- * @version	v1.0.0
+ * @author : Sebastian Bedin <sebabedin@gmail.com>
  */
 
 /********************** inclusions *******************************************/
-/* Project includes. */
+
 #include "main.h"
 #include "cmsis_os.h"
-
-/* Demo includes. */
 #include "logger.h"
 #include "dwt.h"
-
-/* Application & Tasks includes. */
 #include "board.h"
 
 #include "task_button.h"
+#include "task_led.h"
+#include "task_ui.h"
 
 /********************** macros and definitions *******************************/
+
 
 /********************** internal data declaration ****************************/
 
@@ -58,11 +53,15 @@
 
 /********************** internal data definition *****************************/
 
-/********************** external data declaration ****************************/
+/********************** external data declaration *****************************/
+
 
 /********************** external functions definition ************************/
 void app_init(void)
 {
+  PriorityQueueHandle_t hq = ao_ui_init();
+  ao_led_init(hq);
+
   BaseType_t status;
 
   status = xTaskCreate(task_button, "task_button", 128, NULL, tskIDLE_PRIORITY, NULL);

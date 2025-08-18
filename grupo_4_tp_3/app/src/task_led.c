@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Sebastian Bedin <sebabedin@gmail.com>.
+ * Copyright (c) 2023 Sebastian Bedin <sebabedin@gmail.com>.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,50 +29,37 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- *
- * @file   : driver.c
- * @date   : Feb 17, 2023
  * @author : Sebastian Bedin <sebabedin@gmail.com>
- * @version	v1.0.0
  */
 
 /********************** inclusions *******************************************/
 
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+
 #include "main.h"
 #include "cmsis_os.h"
+#include "board.h"
+#include "logger.h"
+#include "dwt.h"
+
+#include "task_led.h"
+#include "task_ui.h"
 
 /********************** macros and definitions *******************************/
 
+//#define TASK_PERIOD_MS_          (1000)
+//#define QUEUE_LENGTH_            (1)
+//#define QUEUE_ITEM_SIZE_         (sizeof(ao_led_message_t))
+
+//extern PriorityQueueHandle_t hq_ui2led;
+
 /********************** internal data declaration ****************************/
-
-typedef enum
-{
-  DRIVER_GPIO_LEDR,
-  DRIVER_GPIO_LEDG,
-  DRIVER_GPIO_LEDB,
-  DRIVER_GPIO_SW,
-  DRIVER_GPIO__CNT,
-} driver_gpio_idx_t;
-
-typedef struct
-{
-  eboard_gpio_idx_t idx;
-  GPIO_TypeDef *GPIOx;
-  uint16_t GPIO_Pin;
-} driver_gpio_descriptor_t_;
 
 /********************** internal functions declaration ***********************/
 
 /********************** internal data definition *****************************/
-
-static driver_gpio_descriptor_t_ driver_gpios_[] = { {idx: EBOARD_GPIO_LEDR, GPIOx: GPIOB, GPIO_Pin: GPIO_PIN_14}, // LED3
-    {idx: EBOARD_GPIO_LEDG, GPIOx: GPIOB, GPIO_Pin: GPIO_PIN_0}, // LED1
-    {idx: EBOARD_GPIO_LEDB, GPIOx: GPIOB, GPIO_Pin: GPIO_PIN_7}, // LED2
-    {idx: EBOARD_GPIO_SW, GPIOx: GPIOC, GPIO_Pin: GPIO_PIN_13}, // USER BTN
-    };
-
-extern UART_HandleTypeDef huart3;
-UART_HandleTypeDef *p_huart_selected_ = &huart3;
 
 /********************** external data definition *****************************/
 
@@ -80,53 +67,58 @@ UART_HandleTypeDef *p_huart_selected_ = &huart3;
 
 /********************** external functions definition ************************/
 
-void euart_hal_receive(void *phardware_handle, uint8_t *pbuffer, size_t size)
+void task_led(void *argument)
 {
-  HAL_UARTEx_ReceiveToIdle_IT((UART_HandleTypeDef*)phardware_handle, pbuffer, size);
+
+    PriorityQueueHandle_t hq = (PriorityQueueHandle_t)argument;
+
+    //Simula el apagado de los LEDs al inicio
+    LOGGER_INFO("Led RED off");
+    LOGGER_INFO("Led GREEN off");
+    LOGGER_INFO("Led BLUE off");
+
+	while (true)
+	{
+	    ui_led_msg_t *job = NULL;
+
+	    if (pdPASS == xPriorityQueueReceive(hq, (void**)&job, portMAX_DELAY))
+	    {
+			switch (job->color) {
+				case UI_LED_RED:
+					LOGGER_INFO("[%d]Led RED on",job->id);
+					vTaskDelay(pdMS_TO_TICKS(job->on_time_ms));
+					LOGGER_INFO("[%d]Led RED off",job->id);
+					break;
+
+				case UI_LED_GREEN:
+					LOGGER_INFO("[%d]Led GREEN on",job->id);
+					vTaskDelay(pdMS_TO_TICKS(job->on_time_ms));
+					LOGGER_INFO("[%d]Led GREEN off",job->id);
+					break;
+
+				case UI_LED_BLUE:
+					LOGGER_INFO("[%d]Led BlUE on",job->id);
+					vTaskDelay(pdMS_TO_TICKS(job->on_time_ms));
+					LOGGER_INFO("[%d]Led BLUE off",job->id);
+					break;
+
+				default:
+					break;
+					vPortFree(job);
+			}
+
+		}
+	}
 }
 
-void euart_hal_send(void *phardware_handle, uint8_t *pbuffer, size_t size)
+void ao_led_init(PriorityQueueHandle_t hq)
 {
-  HAL_UART_Transmit_IT((UART_HandleTypeDef*)phardware_handle, pbuffer, size);
+	BaseType_t st = xTaskCreate(task_led, "task_ao_led", 256, (void*)hq, tskIDLE_PRIORITY + 1, NULL);
+	while (pdPASS != st)
+	{
+		/* error */
+	}
 }
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
-{
-  eboard_hal_port_uart_error((void*)huart);
-  // TODO: ¿?
-}
-
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
-{
-  eboard_hal_port_uart_rx_irq((void*)huart, size);
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-  eboard_hal_port_uart_tx_irq((void*)huart);
-}
-
-void eboard_hal_port_gpio_write(void *handle, bool value)
-{
-  driver_gpio_descriptor_t_ *hgpio = (driver_gpio_descriptor_t_*)handle;
-  HAL_GPIO_WritePin(hgpio->GPIOx, hgpio->GPIO_Pin, value ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
-
-bool eboard_hal_port_gpio_read(void *handle)
-{
-  driver_gpio_descriptor_t_ *hgpio = (driver_gpio_descriptor_t_*)handle;
-  GPIO_PinState state = HAL_GPIO_ReadPin(hgpio->GPIOx, hgpio->GPIO_Pin);
-  return (GPIO_PIN_SET == state);
-}
-
-uint32_t eboard_osal_port_get_time(void)
-{
-  return (uint32_t)xTaskGetTickCount();
-}
-
-void eboard_osal_port_delay(uint32_t time_ms)
-{
-  vTaskDelay((TickType_t)((time_ms) / portTICK_PERIOD_MS));
-}
 
 /********************** end of file ******************************************/

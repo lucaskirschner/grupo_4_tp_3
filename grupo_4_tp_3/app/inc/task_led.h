@@ -32,8 +32,8 @@
  * @author : Sebastian Bedin <sebabedin@gmail.com>
  */
 
-#ifndef TASK_BUTTTON_H_
-#define TASK_BUTTTON_H_
+#ifndef TASK_LED_H_
+#define TASK_LED_H_
 
 /********************** CPP guard ********************************************/
 #ifdef __cplusplus
@@ -42,28 +42,67 @@ extern "C" {
 
 /********************** inclusions *******************************************/
 
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#include "main.h"
+#include "cmsis_os.h"
+#include "priority_queue.h"
+
 /********************** macros ***********************************************/
 
 /********************** typedef **********************************************/
+
+//typedef enum
+//{
+//  AO_LED_MESSAGE_ON,
+//  AO_LED_MESSAGE_OFF,
+//  AO_LED_MESSAGE_BLINK,
+//  AO_LED_MESSAGE__N,
+//} ao_led_action_t;
+//
+//typedef void (*ao_led_cb_t)(int);
+
+//typedef struct
+//{
+//    int id;
+//    ao_led_cb_t callback;
+//    ao_led_action_t action;
+//    int value;
+//} ao_led_message_t;
+
 typedef enum
 {
-  BUTTON_TYPE_NONE,
-  BUTTON_TYPE_PULSE,
-  BUTTON_TYPE_SHORT,
-  BUTTON_TYPE_LONG,
-  BUTTON_TYPE__N,
-} button_type_t;
+  AO_LED_COLOR_RED,
+  AO_LED_COLOR_GREEN,
+  AO_LED_COLOR_BLUE,
+} ao_led_color;
+
+typedef struct
+{
+    ao_led_color color;
+    QueueHandle_t hqueue;
+} ao_led_handle_t;
+
 /********************** external data declaration ****************************/
 
 /********************** external functions declaration ***********************/
 
-void task_button(void* argument);
+void task_led(void* argument);
+
+//bool ao_led_send(ao_led_handle_t* hao, ao_led_message_t* msg);
+
+//void ao_led_init(ao_led_handle_t* hao, ao_led_color color);
+
+void ao_led_init(PriorityQueueHandle_t hq);
+
 
 /********************** End of CPP guard *************************************/
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TASK_BUTTTON_H_ */
+#endif /* TASK_LED_H_ */
 /********************** end of file ******************************************/
 

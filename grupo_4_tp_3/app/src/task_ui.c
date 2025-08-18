@@ -43,105 +43,100 @@
 #include "board.h"
 #include "logger.h"
 #include "dwt.h"
-#include <task_button.h>
-#include <task_ui.h>
+
+#include "task_ui.h"
+#include "task_led.h"
+
 
 /********************** macros and definitions *******************************/
-
-#define TASK_PERIOD_MS_           (50)
-
-#define BUTTON_PERIOD_MS_         (TASK_PERIOD_MS_)
-#define BUTTON_PULSE_TIMEOUT_     (200)
-#define BUTTON_SHORT_TIMEOUT_     (1000)
-#define BUTTON_LONG_TIMEOUT_      (2000)
-
+#define QUEUE_LENGTH_            (5)
+#define QUEUE_ITEM_SIZE_         (sizeof(msg_event_t))
+#define UI_PQ_CAPACITY   		 10
 /********************** internal data declaration ****************************/
-
+typedef struct
+{
+    QueueHandle_t hqueue;
+} ao_ui_handle_t;
 /********************** internal functions declaration ***********************/
 
 /********************** internal data definition *****************************/
-
+static ao_ui_handle_t hao_;
+static PriorityQueueHandle_t hq_ui2led = NULL;
 /********************** external data definition *****************************/
-
-extern SemaphoreHandle_t hsem_button;
+uint8_t idOrder = 0;
 
 /********************** internal functions definition ************************/
 
-
-
-static struct
-{
-    uint32_t counter;
-} button;
-
-static void button_init_(void)
-{
-  button.counter = 0;
-}
-
-static button_type_t button_process_state_(bool value)
-{
-  button_type_t ret = BUTTON_TYPE_NONE;
-  if(value)
-  {
-    button.counter += BUTTON_PERIOD_MS_;
-  }
-  else
-  {
-    if(BUTTON_LONG_TIMEOUT_ <= button.counter)
-    {
-      ret = BUTTON_TYPE_LONG;
-    }
-    else if(BUTTON_SHORT_TIMEOUT_ <= button.counter)
-    {
-      ret = BUTTON_TYPE_SHORT;
-    }
-    else if(BUTTON_PULSE_TIMEOUT_ <= button.counter)
-    {
-      ret = BUTTON_TYPE_PULSE;
-    }
-    button.counter = 0;
-  }
-  return ret;
-}
-
 /********************** external functions definition ************************/
 
-void task_button(void* argument)
+static void send_led_job_(ui_led_color_t color, pq_prio_t prio)
 {
-  button_init_();
+  ui_led_msg_t *job = pvPortMalloc(sizeof(*job));
+  if (!job) return; // manejar error si querés
 
-  while(true)
+  job->prio = prio;
+  job->color = color;
+  job->on_time_ms = 5000;
+  job->id = idOrder;
+  (void)xPriorityQueueSend(hq_ui2led, (void* const*)&job, 0);
+  idOrder++;
+}
+
+void task_ui(void *argument)
+{
+  LOGGER_INFO("task_ui iniciada");
+
+  while (true)
   {
-    GPIO_PinState button_state;
-    button_state = HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN);
 
-    button_type_t button_type;
-    button_type = button_process_state_(!button_state);
+	msg_event_t event_msg;
 
-    switch (button_type) {
-      case BUTTON_TYPE_NONE:
-        break;
-      case BUTTON_TYPE_PULSE:
-        LOGGER_INFO("button pulse");
-        ao_ui_send_event(MSG_EVENT_BUTTON_PULSE);
-        break;
-      case BUTTON_TYPE_SHORT:
-        LOGGER_INFO("button short");
-        ao_ui_send_event(MSG_EVENT_BUTTON_SHORT);
-        break;
-      case BUTTON_TYPE_LONG:
-        LOGGER_INFO("button long");
-        ao_ui_send_event(MSG_EVENT_BUTTON_LONG);
-        break;
-      default:
-        LOGGER_INFO("button error");
-        ao_ui_send_event(MSG_EVENT__N);
-        break;
-    }
-
-    vTaskDelay((TickType_t)(TASK_PERIOD_MS_ / portTICK_PERIOD_MS));
+	if (pdPASS == xQueueReceive(hao_.hqueue, &event_msg, portMAX_DELAY))
+	{
+	  switch (event_msg)
+	  {
+		case MSG_EVENT_BUTTON_PULSE:
+		  send_led_job_(UI_LED_RED, PQ_PRIO_HIGH);
+		  break;
+		case MSG_EVENT_BUTTON_SHORT:
+		  send_led_job_(UI_LED_GREEN, PQ_PRIO_MED);
+		  break;
+		case MSG_EVENT_BUTTON_LONG:
+		  send_led_job_(UI_LED_BLUE, PQ_PRIO_LOW);
+		  break;
+		default:
+		  break;
+	  }
+	}
   }
 }
+
+bool ao_ui_send_event(msg_event_t msg)
+{
+  return (pdPASS == xQueueSend(hao_.hqueue, (void*)&msg, 0));
+}
+
+
+PriorityQueueHandle_t ao_ui_init(void)
+{
+	hao_.hqueue = xQueueCreate(QUEUE_LENGTH_, QUEUE_ITEM_SIZE_);
+	while(NULL == hao_.hqueue)
+	{
+	// error
+	}
+
+	hq_ui2led = xPriorityQueueCreate(UI_PQ_CAPACITY, sizeof(void*));
+	configASSERT(hq_ui2led != NULL);
+
+	BaseType_t status;
+	status = xTaskCreate(task_ui, "task_ao_ui", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
+	while (pdPASS != status)
+	{
+	  // error
+	}
+
+    return hq_ui2led;
+}
+
 
 /********************** end of file ******************************************/

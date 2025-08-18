@@ -32,8 +32,8 @@
  * @author : Sebastian Bedin <sebabedin@gmail.com>
  */
 
-#ifndef TASK_BUTTTON_H_
-#define TASK_BUTTTON_H_
+#ifndef TASK_UI_H_
+#define TASK_UI_H_
 
 /********************** CPP guard ********************************************/
 #ifdef __cplusplus
@@ -41,29 +41,52 @@ extern "C" {
 #endif
 
 /********************** inclusions *******************************************/
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
+#include "main.h"
+#include "priority_queue.h"
 /********************** macros ***********************************************/
 
 /********************** typedef **********************************************/
 typedef enum
 {
-  BUTTON_TYPE_NONE,
-  BUTTON_TYPE_PULSE,
-  BUTTON_TYPE_SHORT,
-  BUTTON_TYPE_LONG,
-  BUTTON_TYPE__N,
-} button_type_t;
+  MSG_EVENT_BUTTON_PULSE,
+  MSG_EVENT_BUTTON_SHORT,
+  MSG_EVENT_BUTTON_LONG,
+  MSG_EVENT__N,
+} msg_event_t;
+
+typedef enum {
+  UI_LED_RED,
+  UI_LED_GREEN,
+  UI_LED_BLUE,
+} ui_led_color_t;
+
+typedef struct {
+  pq_prio_t prio;      // PQ_PRIO_HIGH / PQ_PRIO_MED / PQ_PRIO_LOW
+  ui_led_color_t color;
+  uint32_t on_time_ms;
+  uint8_t id;
+} ui_led_msg_t;
+
 /********************** external data declaration ****************************/
 
 /********************** external functions declaration ***********************/
 
-void task_button(void* argument);
+void task_ui(void* argument);
 
+bool ao_ui_send_event(msg_event_t msg);
+
+//void ao_ui_init();
+
+PriorityQueueHandle_t ao_ui_init(void);
 /********************** End of CPP guard *************************************/
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TASK_BUTTTON_H_ */
+#endif /* TASK_UI_H_ */
 /********************** end of file ******************************************/
 
