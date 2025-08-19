@@ -43,6 +43,10 @@
 #include "task_button.h"
 #include "task_led.h"
 #include "task_ui.h"
+#include "priority_queue_core.h"
+#include "linked_list.h"
+#include "freertos_priority_queue.h"
+
 
 /********************** macros and definitions *******************************/
 

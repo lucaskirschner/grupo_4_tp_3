@@ -48,29 +48,12 @@ extern "C" {
 
 #include "main.h"
 #include "cmsis_os.h"
-#include "priority_queue.h"
+#include "freertos_priority_queue.h"
+#include "priority_queue_core.h"
 
 /********************** macros ***********************************************/
 
 /********************** typedef **********************************************/
-
-//typedef enum
-//{
-//  AO_LED_MESSAGE_ON,
-//  AO_LED_MESSAGE_OFF,
-//  AO_LED_MESSAGE_BLINK,
-//  AO_LED_MESSAGE__N,
-//} ao_led_action_t;
-//
-//typedef void (*ao_led_cb_t)(int);
-
-//typedef struct
-//{
-//    int id;
-//    ao_led_cb_t callback;
-//    ao_led_action_t action;
-//    int value;
-//} ao_led_message_t;
 
 typedef enum
 {

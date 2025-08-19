@@ -46,12 +46,14 @@
 
 #include "task_ui.h"
 #include "task_led.h"
-
+#include "freertos_priority_queue.h"
+#include "priority_queue_core.h"
 
 /********************** macros and definitions *******************************/
 #define QUEUE_LENGTH_            (5)
 #define QUEUE_ITEM_SIZE_         (sizeof(msg_event_t))
 #define UI_PQ_CAPACITY   		 10
+
 /********************** internal data declaration ****************************/
 typedef struct
 {
@@ -69,7 +71,7 @@ uint8_t idOrder = 0;
 
 /********************** external functions definition ************************/
 
-static void send_led_job_(ui_led_color_t color, pq_prio_t prio)
+static void send_led_job_(ui_led_color_t color, pq_priority_t prio)
 {
   ui_led_msg_t *job = pvPortMalloc(sizeof(*job));
   if (!job) return; // manejar error si querés
